@@ -7,12 +7,16 @@
 
 import Foundation
 
+protocol FollowerItemVCDelegate: AnyObject {
+    func didTapGetFollowers(for user: User)
+}
+
 class GHFollowerItemVC: GHItemInfoVC {
-    var user: User!
-    
-    init(user: User!) {
-        super.init(nibName: nil, bundle: nil)
-        self.user = user
+    weak var delegate : FollowerItemVCDelegate?
+        
+    init(user: User, delegate: FollowerItemVCDelegate) {
+        super.init(user: user)
+        self.delegate = delegate
     }
     
     required init?(coder: NSCoder) {
