@@ -1,16 +1,13 @@
 //
-//  GHAvatarImageView.swift
+//  GHAllertContainerView.swift
 //  Dummy GH
 //
-//  Created by Vitaliy on 20.01.2024.
+//  Created by Vitaliy on 31.01.2024.
 //
 
 import UIKit
 
-class GHAvatarImageView: UIImageView {
-    
-    let cache = NetworkManager.shared.cache
-    let placeholderImage = Images.placeHolderImg
+class GHAllertContainerView: UIView {
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -22,9 +19,10 @@ class GHAvatarImageView: UIImageView {
     }
     
     private func configure() {
-        layer.cornerRadius = 10
-        clipsToBounds = true
-        image = placeholderImage
+        backgroundColor = .systemBackground
+        layer.cornerRadius = 16
+        layer.borderWidth = 2
+        layer.borderColor = UIColor.white.cgColor
         translatesAutoresizingMaskIntoConstraints = false
     }
 }

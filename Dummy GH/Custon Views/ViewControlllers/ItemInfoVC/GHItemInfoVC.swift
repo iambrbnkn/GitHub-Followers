@@ -13,12 +13,15 @@ class GHItemInfoVC: UIViewController {
     let iteminfoViewOne = GHItemInfoView()
     let iteminfoViewTwo = GHItemInfoView()
     let actionButton = GHButton()
+    
+    weak var delegate : UserInfiVCDelegate?
 
     override func viewDidLoad() {
         super.viewDidLoad()
         layoutUI()
         configureBackGroundView()
         configureStackView()
+        configureActionButton()
     }
     
     private func configureBackGroundView() {
@@ -31,6 +34,13 @@ class GHItemInfoVC: UIViewController {
         stackView.distribution = .equalSpacing
         stackView.addArrangedSubview(iteminfoViewOne)
         stackView.addArrangedSubview(iteminfoViewTwo)
+    }
+    private func configureActionButton() {
+        actionButton.addTarget(self, action: #selector(actionButtonTapped), for: .touchUpInside)
+    }
+    
+    @objc func actionButtonTapped() {
+        
     }
     
     private func layoutUI() {

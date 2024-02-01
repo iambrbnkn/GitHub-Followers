@@ -18,10 +18,9 @@ class GHBodyLabel: UILabel {
         fatalError("Failed to initialize")
     }
     
-    init(textAlingment:NSTextAlignment) {
-        super.init(frame: .zero)
+    convenience init(textAlingment:NSTextAlignment) {
+        self.init(frame: .zero)
         self.textAlignment = textAlingment
-        configure()
     }
     
     private func configure() {
