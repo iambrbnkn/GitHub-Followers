@@ -7,7 +7,7 @@
 
 import UIKit
 
-class GHUserInfoHeaderVC: UIViewController {
+final class GHUserInfoHeaderVC: UIViewController {
     
     let avatarImageView     = GHAvatarImageView(frame: .zero)
     let usernameLabel       = GHTitleLabel(textAlingment: .left, fontSize: 34)
@@ -34,7 +34,7 @@ class GHUserInfoHeaderVC: UIViewController {
     }
     
     func configureUIElements() {
-        dowloadAvatarImage()
+        avatarImageView.dowloadImage(fromURL: user.avatarUrl)
         usernameLabel.text = user.login
         nameLabel.text = user.name ?? ""
         locationLabel.text = user.location ?? "No location..."
@@ -44,14 +44,7 @@ class GHUserInfoHeaderVC: UIViewController {
         locationImageView.tintColor = .secondaryLabel
     }
     
-    func dowloadAvatarImage() {
-        NetworkManager.shared.dowloadImage(from: user.avatarUrl) { [weak self] image in
-            guard let self = self else { return }
-            DispatchQueue.main.async {
-                self.avatarImageView.image = image
-            }
-        }
-    }
+    
     
     func layoutUI() {
         view.addSubviews(avatarImageView,

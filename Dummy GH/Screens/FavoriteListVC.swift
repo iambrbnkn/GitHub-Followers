@@ -23,6 +23,18 @@ class FavoriteListVC: GHDataLoadingVC {
         getFavorite()
     }
     
+    override func updateContentUnavailableConfiguration(using state: UIContentUnavailableConfigurationState) {
+        if favorites.isEmpty {
+            var config = UIContentUnavailableConfiguration.empty()
+            config.image = .init(systemName: "star")
+            config.secondaryText = "You can add favorites on Favorites screen"
+            config.text = "No Favorites?!"
+            contentUnavailableConfiguration = config
+        } else {
+            contentUnavailableConfiguration = nil
+        }
+    }
+    
     func configureVC() {
         title = "Favorites"
         navigationController?.navigationBar.prefersLargeTitles = true
@@ -31,28 +43,43 @@ class FavoriteListVC: GHDataLoadingVC {
     
     func getFavorite() {
         PersistanceManager.retriveFavorites { [weak self ] result in
-            guard let self = self else { return }
+            guard let self else { return }
             switch result {
             case .success(let favorites):
-                if favorites.isEmpty {
-                    self.showEmptyStateView(with: "No favorites \n added yet :(", in: self.view)
-                } else {
-                    self.favorites = favorites
-                    DispatchQueue.main.async {
-                        self.tableView.reloadData()
-                        self.view.bringSubviewToFront(self.tableView)
-                    }
-                }
+                updateUI(with: favorites)
             case .failure(let error):
-                self.preseGHAlertOnMainThread(title: "Something went wrong", message: error.rawValue, buttonTitle: "OK")
+                DispatchQueue.main.async {
+                    self.presentGHAlert(title: "Something went wrong", message: error.rawValue, buttonTitle: "OK")
+                }
             }
         }
     }
     
+    private func updateUI(with favorites: [Follower]) {
+        self.favorites = favorites
+        setNeedsUpdateContentUnavailableConfiguration()
+        DispatchQueue.main.async {
+            self.tableView.reloadData()
+            self.view.bringSubviewToFront(self.tableView)
+        }
+//        if favorites.isEmpty {
+//            self.showEmptyStateView(with: "No favorites \n added yet :(", in: self.view)
+//        } else {
+//            self.favorites = favorites
+//            DispatchQueue.main.async {
+//                self.tableView.reloadData()
+//                self.view.bringSubviewToFront(self.tableView)
+//            }
+//        }
+    }
+    
     func configureTableView() {
         view.addSubview(tableView)
+        
         tableView.frame = view.bounds
         tableView.rowHeight = 80
+        tableView.removeExcessCells()
+        
         tableView.dataSource = self
         tableView.delegate = self
         
@@ -84,14 +111,20 @@ extension FavoriteListVC: UITableViewDataSource, UITableViewDelegate {
     func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         guard editingStyle == .delete else { return }
         
-        let favorite = favorites[indexPath.row]
-        favorites.remove(at: indexPath.row)
-        tableView.deleteRows(at: [indexPath], with: .left)
-        
-        PersistanceManager.updateWith(favorite: favorite, actionType: .remove) { [weak self] error in
-            guard let self = self else { return }
-            guard let error = error else { return }
-            self.preseGHAlertOnMainThread(title: "Unable to remove", message: error.rawValue, buttonTitle: "OK")
+        PersistanceManager.updateWith(favorite: favorites[indexPath.row], actionType: .remove) { [weak self] error in
+            guard let self else { return }
+            guard let error else {
+                self.favorites.remove(at: indexPath.row)
+                tableView.deleteRows(at: [indexPath], with: .left)
+                setNeedsUpdateContentUnavailableConfiguration()
+//                if self.favorites.isEmpty {
+//                    self.showEmptyStateView(with: "No favorites \n added yet :(", in: self.view)
+//                }
+                return
+            }
+            DispatchQueue.main.async {
+                self.presentGHAlert(title: "Unable to remove", message: error.rawValue, buttonTitle: "OK")
+            }
         }
     }
 }

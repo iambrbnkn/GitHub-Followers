@@ -7,7 +7,7 @@
 
 import UIKit
 
-class GHBodyLabel: UILabel {
+final class GHBodyLabel: UILabel {
 
     override init(frame: CGRect) {
         super.init(frame: frame)

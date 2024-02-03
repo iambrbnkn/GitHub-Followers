@@ -17,6 +17,8 @@ class UserInfoVC: GHDataLoadingVC {
     let itemViewOnde = UIView()
     let itemViewTwo = UIView()
     let dateLabel = GHBodyLabel(textAlingment: .left)
+    let scrollView = UIScrollView()
+    let contentView = UIView()
     
     weak var delegate: UserInfoVCDelegate?
     
@@ -25,8 +27,21 @@ class UserInfoVC: GHDataLoadingVC {
     override func viewDidLoad() {
         super.viewDidLoad()
         configVC()
+        configScrollView()
         layoutUI()
         getUserInfo()
+    }
+    
+    func configScrollView() {
+        view.addSubview(scrollView)
+        scrollView.addSubview(contentView)
+        scrollView.pinViewToEdges(of: view)
+        contentView.pinViewToEdges(of: scrollView)
+        
+        NSLayoutConstraint.activate([
+            contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
+            contentView.heightAnchor.constraint(equalToConstant: 600)
+        ])
     }
     
     func add(childVC: UIViewController, to containerView: UIView){
@@ -43,15 +58,16 @@ class UserInfoVC: GHDataLoadingVC {
     }
     
     func getUserInfo() {
-        NetworkManager.shared.getUserInfo(for: username) { [weak self] result in
-            guard let self = self else { return }
-            switch result {
-            case .success(let user):
-                DispatchQueue.main.async {
-                    self.configureUIElements(wth: user)
+        Task {
+            do {
+                let user = try await NetworkManager.shared.getUserInfo(for: username)
+                configureUIElements(wth: user)
+            } catch {
+                if let ghError = error as? GHError {
+                    presentGHAlert(title: "Something went wrong.", message: ghError.rawValue, buttonTitle: "OK")
+                } else {
+                    presentDefaultError()
                 }
-            case .failure(let error):
-                self.preseGHAlertOnMainThread(title: "Something went wrong.", message: error.rawValue, buttonTitle: "OK")
             }
         }
     }
@@ -70,17 +86,17 @@ class UserInfoVC: GHDataLoadingVC {
         let itemHeight: CGFloat = 140
         
         itemViews.forEach { itemView in
-            view.addSubview(itemView)
+            contentView.addSubview(itemView)
             itemView.translatesAutoresizingMaskIntoConstraints = false
             
             NSLayoutConstraint.activate([
-                itemView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: padding),
-                itemView.trailingAnchor.constraint(equalTo: view.trailingAnchor,constant: -padding),
+                itemView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
+                itemView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor,constant: -padding),
             ])
         }
         
         NSLayoutConstraint.activate([
-            headerView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            headerView.topAnchor.constraint(equalTo: contentView.safeAreaLayoutGuide.topAnchor),
             headerView.heightAnchor.constraint(equalToConstant: 210),
             
             itemViewOnde.topAnchor.constraint(equalTo: headerView.bottomAnchor, constant: padding),
@@ -103,7 +119,7 @@ class UserInfoVC: GHDataLoadingVC {
 extension UserInfoVC: RepoItemVCDelegate {
     func didTapGitHubProfile(for user: User) {
         guard let url = URL(string: user.htmlUrl) else {
-            preseGHAlertOnMainThread(title: "Invalid URL", message: "URL attached to this user is invalid", buttonTitle: "Fck!")
+            presentGHAlert(title: "Invalid URL", message: "URL attached to this user is invalid", buttonTitle: "Fck!")
             return
         }
         presentSafariVC(with: url)
@@ -113,7 +129,7 @@ extension UserInfoVC: RepoItemVCDelegate {
 extension UserInfoVC: FollowerItemVCDelegate {
     func didTapGetFollowers(for user: User) {
         guard user.followers != 0 else {
-            preseGHAlertOnMainThread(title: "No Follower", message: "This user has no followers 😱", buttonTitle: "Gotcha")
+            presentGHAlert(title: "No Follower", message: "This user has no followers 😱", buttonTitle: "Gotcha")
             return
         }
         delegate?.didRequestFollowers(for: user.login)

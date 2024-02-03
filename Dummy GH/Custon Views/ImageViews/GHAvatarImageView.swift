@@ -27,4 +27,10 @@ class GHAvatarImageView: UIImageView {
         image = placeholderImage
         translatesAutoresizingMaskIntoConstraints = false
     }
+    
+    func dowloadImage(fromURL url: String) {
+        Task {
+            image = await NetworkManager.shared.dowloadImage(from: url) ?? placeholderImage
+        }
+    }
 }

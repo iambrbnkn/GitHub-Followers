@@ -11,8 +11,7 @@ class SearchVC: UIViewController {
     
     let logoImageView = UIImageView()
     let usernameTextField = GHTextField()
-    let callToActionButton = GHButton(backgroundColor: .systemGreen, title: "Get Followers")
-    var logoImageViewTopConstraint: NSLayoutConstraint!
+    let callToActionButton = GHButton(color: .systemGreen, title: "Get Followers", systemImageName: "")
     
     var isUsernameEntered: Bool { return !usernameTextField.text!.isEmpty }
 
@@ -40,7 +39,7 @@ class SearchVC: UIViewController {
     @objc
     func pushFollowerListVC() {
         guard isUsernameEntered else { 
-            preseGHAlertOnMainThread(title: "Empty username", message: "Please enter a user name. We need to know who to look for 🧐", buttonTitle: "OK")
+            presentGHAlert(title: "Empty username", message: "Please enter a user name. We need to know who to look for 🧐", buttonTitle: "OK")
             return
         }
         
@@ -55,12 +54,10 @@ class SearchVC: UIViewController {
         logoImageView.translatesAutoresizingMaskIntoConstraints = false
         logoImageView.image = Images.ghLogo
              
-        let topConstraintConstant: CGFloat  = DeviceType.isIphoneSE || DeviceType.isIphone8Zoom ? 20 : 80
-        
-        logoImageViewTopConstraint = logoImageView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: topConstraintConstant)
-        logoImageViewTopConstraint.isActive = true
+        let topConstraintConstant: CGFloat  = DeviceType.isIphoneSE || DeviceType.isIphone8Zoom ? 20 : 100
         
         NSLayoutConstraint.activate([
+            logoImageView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: topConstraintConstant),
             logoImageView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             logoImageView.heightAnchor.constraint(equalToConstant: 200),
             logoImageView.widthAnchor.constraint(equalToConstant: 200),
@@ -93,7 +90,11 @@ class SearchVC: UIViewController {
 
 extension SearchVC: UITextFieldDelegate {
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-        
+        pushFollowerListVC()
         return true
     }
+}
+
+#Preview {
+    SearchVC()
 }

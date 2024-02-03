@@ -9,9 +9,7 @@ import UIKit
 
 class FollowerListVC: GHDataLoadingVC {
     
-    enum Section {
-        case main
-    }
+    enum Section { case main }
     
     var username: String!
     var followers: [Follower] = []
@@ -48,6 +46,20 @@ class FollowerListVC: GHDataLoadingVC {
         navigationController?.setNavigationBarHidden(false, animated: true)
     }
     
+    override func updateContentUnavailableConfiguration(using state: UIContentUnavailableConfigurationState) {
+        if followers.isEmpty && !isLoadingMoreFollowers {
+            var config = UIContentUnavailableConfiguration.empty()
+            config.image = .init(systemName: "person.slash")
+            config.secondaryText = "This user has no followers. Go follow them!"
+            config.text = "No Followers"
+            contentUnavailableConfiguration = config
+        } else if  isSearching && filteredFollowers.isEmpty {
+            contentUnavailableConfiguration = UIContentUnavailableConfiguration.search()
+        } else {
+            contentUnavailableConfiguration = nil
+        }
+    }
+    
     func configureVC() {
         view.backgroundColor = .systemBackground
         navigationController?.navigationBar.prefersLargeTitles = true
@@ -58,27 +70,35 @@ class FollowerListVC: GHDataLoadingVC {
     
     @objc
     private func addButtonTapped() {
-        NetworkManager.shared.getUserInfo(for: username) { [weak self] result in
-            guard let self = self else { return }
-            self.dismissLoadingView()
-            
-            switch result {
-            case .success(let user):
-                let favorite = Follower(login: user.login, avatarUrl: user.avatarUrl)
-                PersistanceManager.updateWith(favorite: favorite, actionType: .add) { [weak self] error in
-                    guard let self = self else { return }
-                    guard let error = error else {
-                        self.preseGHAlertOnMainThread(title: "Succes!", message: "Follower added!", buttonTitle: "OK")
-                        return
-                    }
-                    self.preseGHAlertOnMainThread(title: "Something went wrong", message: error.rawValue, buttonTitle: "OK")
+        showLoadingView()
+        Task {
+            do {
+                let user = try await NetworkManager.shared.getUserInfo(for: username)
+                addUserToFavorites(user)
+            } catch {
+                if let ghError = error as? GHError {
+                    presentGHAlert(title: "Something went wrong", message: ghError.rawValue, buttonTitle: "OK")
+                } else {
+                    presentDefaultError()
                 }
-                
-            case .failure(let failure):
-                self.preseGHAlertOnMainThread(title: "Something went wrong", message: failure.rawValue, buttonTitle: "OK")
+            }
+            dismissLoadingView()
+        }
+    }
+    
+    private func addUserToFavorites(_ user: User) {
+        let favorite = Follower(login: user.login, avatarUrl: user.avatarUrl)
+        PersistanceManager.updateWith(favorite: favorite, actionType: .add) { [weak self] error in
+            guard let self else { return }
+            guard let _ = error else {
+                DispatchQueue.main.async {
+                    self.presentGHAlert(title: "Succes!", message: "Follower added!", buttonTitle: "OK")
+                }
+                return
             }
         }
     }
+    
     
     func configureCollectionView() {
         collectionView = UICollectionView(frame: view.bounds, collectionViewLayout: UIHelper.createThreeColumnFlowLayout(in: view))
@@ -92,35 +112,46 @@ class FollowerListVC: GHDataLoadingVC {
         showLoadingView()
         isLoadingMoreFollowers = true
         
-        NetworkManager.shared.getFollowers(for: username, page: page) { [weak self] result in
-            guard let self = self else { return }
-            dismissLoadingView()
-
-            switch result {
-            case .success(let followers):
-                if followers.count < 100 { self.hasMoreFollowers = false}
-                self.followers.append(contentsOf: followers)
-                if self.followers.isEmpty {
-                    let message = "This user doesn't have any followers. Go follow em 😌"
-                    DispatchQueue.main.async { self.showEmptyStateView(with: message, in: self.view) }
-                    return
+        Task {
+            do {
+                let followers = try await NetworkManager.shared.getFollowers(for: username, page: page)
+                updateUI(with: followers)
+                dismissLoadingView()
+            } catch {
+                if let ghError = error as? GHError {
+                    presentGHAlert(title: "It happens", message: ghError.rawValue, buttonTitle: "Ok")
+                } else {
+                    presentDefaultError()
                 }
-                self.updateData(on: followers)
                 
-            case .failure(let error):
-                self.preseGHAlertOnMainThread(title: "It happens", message: error.rawValue, buttonTitle: "Ok")
+                dismissLoadingView()
             }
-            
             isLoadingMoreFollowers = false
         }
     }
     
+    func updateUI(with followers: [Follower]) {
+        if followers.count < 100 { self.hasMoreFollowers = false}
+        self.followers.append(contentsOf: followers)
+        setNeedsUpdateContentUnavailableConfiguration()
+//        if self.followers.isEmpty {
+//            let message = "This user doesn't have any followers. Go follow em 😌"
+//            DispatchQueue.main.async { self.showEmptyStateView(with: message, in: self.view) }
+//            return
+//        }
+        self.updateData(on: followers)
+    }
+    
     func configureDataSource() {
-        dataSource = UICollectionViewDiffableDataSource(collectionView: collectionView, cellProvider: { collectionView, indexPath, follower in
-            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: FollowerCell.reuseID, for: indexPath) as! FollowerCell
-            cell.set(follower: follower)
-            return cell
-        })
+        dataSource = UICollectionViewDiffableDataSource(
+            collectionView: collectionView,
+            cellProvider: { collectionView, indexPath, follower in
+                let cell = collectionView.dequeueReusableCell(
+                    withReuseIdentifier: FollowerCell.reuseID,
+                    for: indexPath) as! FollowerCell
+                cell.set(follower: follower)
+                return cell
+            })
     }
     
     func updateData(on followers: [Follower]) {
@@ -138,6 +169,7 @@ class FollowerListVC: GHDataLoadingVC {
         navigationItem.searchController = searchController
     }
 }
+
 
 extension FollowerListVC: UICollectionViewDelegate {
     
@@ -182,6 +214,7 @@ extension FollowerListVC: UISearchResultsUpdating {
             $0.login.lowercased().contains(filter.lowercased())
         }
         updateData(on: filteredFollowers)
+        setNeedsUpdateContentUnavailableConfiguration()
     }
 }
 

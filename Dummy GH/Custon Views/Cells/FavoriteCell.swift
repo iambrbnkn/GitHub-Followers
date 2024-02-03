@@ -7,7 +7,7 @@
 
 import UIKit
 
-class FavoriteCell: UITableViewCell {
+final class FavoriteCell: UITableViewCell {
     
     static let favoriteCellID = "FavoriteCell"
 
@@ -25,12 +25,8 @@ class FavoriteCell: UITableViewCell {
     
     func set(favorite: Follower) {
         usernameLabel.text = favorite.login
-        NetworkManager.shared.dowloadImage(from: favorite.avatarUrl) { [weak self] image in
-            guard let self = self else { return }
-            DispatchQueue.main.async {
-                self.avatarImageView.image = image
-            }
-        }    }
+        avatarImageView.dowloadImage(fromURL: favorite.avatarUrl)
+    }
     
     private func configure() {
         addSubviews(avatarImageView, usernameLabel)
